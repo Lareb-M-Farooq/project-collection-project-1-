@@ -1,0 +1,191 @@
+# ------------------------------------------------------------
+# Number Guessing Game
+# Copyright (c) 2025 lareb m.farooq. All Rights Reserved.
+# Created with assistance from AI tools (e.g., Gemini CLI).
+# Author: lareb m.farooq (https://github.com/lareb-M-Farooq)
+# ------------------------------------------------------------
+
+import random
+import time
+import json
+import os
+
+# Color themes using ANSI escape codes
+THEMES = {
+    "default": {
+        "text": "\033[0m",
+        "prompt": "\033[94m",
+        "feedback": "\033[93m",
+        "error": "\033[91m",
+        "success": "\033[92m",
+        "title": "\033[1m\033[95m"
+    },
+    "forest": {
+        "text": "\033[32m",
+        "prompt": "\033[33m",
+        "feedback": "\033[32m",
+        "error": "\033[31m",
+        "success": "\033[32;1m",
+        "title": "\033[1m\033[32m"
+    },
+    "ocean": {
+        "text": "\033[34m",
+        "prompt": "\033[36m",
+        "feedback": "\033[34m",
+        "error": "\033[91m",
+        "success": "\033[36;1m",
+        "title": "\033[1m\033[34m"
+    }
+}
+
+LEADERBOARD_FILE = "leaderboard.json"
+
+
+def color_text(text: str, color_key: str, theme: str) -> str:
+    """Apply color escape codes based on the chosen theme."""
+    if theme not in THEMES:
+        theme = "default"
+    return f"{THEMES[theme].get(color_key, THEMES[theme]['text'])}{text}\033[0m"
+
+
+def load_leaderboard() -> dict:
+    """Load leaderboard from file (safe to handle empty/corrupt files)."""
+    if not os.path.exists(LEADERBOARD_FILE):
+        return {}
+    try:
+        with open(LEADERBOARD_FILE, "r", encoding="utf-8") as f:
+            return json.load(f) or {}
+    except (json.JSONDecodeError, ValueError):
+        # If file is empty or corrupted, return empty leaderboard
+        return {}
+
+
+def save_leaderboard(leaderboard: dict) -> None:
+    """Save leaderboard to file."""
+    with open(LEADERBOARD_FILE, "w", encoding="utf-8") as f:
+        json.dump(leaderboard, f, indent=4)
+
+
+def display_leaderboard(theme: str) -> None:
+    """Display top scores grouped by difficulty."""
+    leaderboard = load_leaderboard()
+    print(color_text("\n--- Leaderboard ---", "title", theme))
+    if not leaderboard:
+        print(color_text("No scores yet!", "feedback", theme))
+        return
+
+    for difficulty, scores in leaderboard.items():
+        print(color_text(f"\n--- {difficulty.upper()} ---", "title", theme))
+        sorted_scores = sorted(scores, key=lambda x: x["time"])
+        for i, score in enumerate(sorted_scores[:5], start=1):
+            # using double quotes inside f-string to avoid quoting issues
+            print(color_text(f"{i}. {score['name']}: {score['time']:.2f} seconds", "text", theme))
+
+
+def update_leaderboard(name: str, time_taken: float, difficulty: str) -> None:
+    """Add a new score to the leaderboard and save it."""
+    leaderboard = load_leaderboard()
+    if difficulty not in leaderboard:
+        leaderboard[difficulty] = []
+    leaderboard[difficulty].append({"name": name, "time": time_taken})
+    save_leaderboard(leaderboard)
+
+
+def get_difficulty(theme: str) -> str:
+    """Prompt user for difficulty until valid input is given."""
+    while True:
+        level = input(color_text("Choose a difficulty (easy, medium, hard): ", "prompt", theme)).strip().lower()
+        if level in ["easy", "medium", "hard"]:
+            return level
+        print(color_text("Invalid difficulty. Please choose easy, medium, or hard.", "error", theme))
+
+
+def get_theme() -> str:
+    """Prompt user for color theme until valid input is given."""
+    while True:
+        theme = input(color_text("Choose a color theme (default, forest, ocean): ", "prompt", "default")).strip().lower()
+        if theme in THEMES:
+            return theme
+        print(color_text("Invalid theme. Please choose default, forest, or ocean.", "error", "default"))
+
+
+def play_game() -> None:
+    """Main game loop."""
+    theme = get_theme()
+    print(color_text("--- Welcome to the Guessing Game! ---", "title", theme))
+
+    name = input(color_text("What's your name? ", "prompt", theme)).strip()
+    if not name:
+        name = "Player"
+
+    print(color_text(f"Good luck, {name}!", "feedback", theme))
+
+    while True:
+        difficulty = get_difficulty(theme)
+
+        if difficulty == "easy":
+            min_num, max_num = 1, 25
+        elif difficulty == "medium":
+            min_num, max_num = 26, 55
+        else:
+            min_num, max_num = 56, 100
+
+        secret_number = random.randint(min_num, max_num)
+        guess = None
+        attempts = 0
+        start_time = time.time()
+
+        print(color_text(f"I'm thinking of a number between {min_num} and {max_num}.", "feedback", theme))
+
+        while guess != secret_number:
+            try:
+                guess_input = input(color_text("Your guess: ", "prompt", theme)).strip()
+                if guess_input == "":
+                    # empty input -> prompt again
+                    continue
+
+                guess = int(guess_input)
+                attempts += 1
+
+                if guess < secret_number:
+                    if secret_number - guess <= 5:
+                        print(color_text("So close! Try again.", "feedback", theme))
+                    else:
+                        print(color_text("Too low!", "feedback", theme))
+                elif guess > secret_number:
+                    if guess - secret_number <= 5:
+                        print(color_text("So close! Try again.", "feedback", theme))
+                    else:
+                        print(color_text("Too high!", "feedback", theme))
+                else:
+                    end_time = time.time()
+                    time_taken = end_time - start_time
+                    print(color_text(
+                        f"Wow, you nailed it! You guessed the number in {attempts} attempts and {time_taken:.2f} seconds.",
+                        "success", theme))
+                    update_leaderboard(name, time_taken, difficulty)
+
+                # give a simple hint every 3 attempts (unless guessed)
+                if attempts > 0 and attempts % 3 == 0 and guess != secret_number:
+                    if secret_number % 2 == 0:
+                        print(color_text("Hint: The number is even.", "feedback", theme))
+                    else:
+                        print(color_text("Hint: The number is odd.", "feedback", theme))
+
+            except ValueError:
+                print(color_text("Invalid input. Please enter a whole number.", "error", theme))
+
+        display_leaderboard(theme)
+
+        play_again = input(color_text("Play again? (yes/no): ", "prompt", theme)).strip().lower()
+        if play_again not in ("yes", "y"):
+            print(color_text("Thanks for playing — goodbye!", "title", theme))
+            break
+
+
+if __name__ == "__main__":
+    play_game()
+# ----------------------------------------------------------------------
+# 🖋️ Created by lareb-m-farooq (https://github.com/lare-m-farooq) — 2025
+# ----------------------------------------------------------------------
+

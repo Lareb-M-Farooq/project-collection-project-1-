@@ -1,8 +1,8 @@
 # ------------------------------------------------------------
 # Number Guessing Game
-# Copyright (c) 2025 lareb m.farooq. All Rights Reserved.
+# Copyright (c) 2025 Lareb-M-Farooq. All Rights Reserved.
 # Created with assistance from AI tools (e.g., Gemini CLI).
-# Author: lareb m.farooq (https://github.com/lareb-M-Farooq)
+# Author: Lareb-M-Farooq (https://github.com/Lareb-M-Farooq)
 # ------------------------------------------------------------
 
 import random
@@ -186,6 +186,6 @@ def play_game() -> None:
 if __name__ == "__main__":
     play_game()
 # ----------------------------------------------------------------------
-# 🖋️ Created by lareb-m-farooq (https://github.com/lare-m-farooq) — 2025
+# 🖋️ Created by Lareb-M-Farooq (https://github.com/Lareb-M-Farooq) — 2025
 # ----------------------------------------------------------------------
 
